@@ -1,4 +1,46 @@
-<script>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Price Tracker</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 { text-align: center; color: #58a6ff; font-size: 22px; margin-bottom: 5px; }
+        .status { text-align: center; font-size: 12px; color: #8b949e; margin-bottom: 25px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background-color: #161b22;
+            padding: 18px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .ticker { font-size: 13px; color: #8b949e; font-weight: bold; }
+        .price { font-size: 22px; font-weight: bold; color: #e6edf3; margin: 8px 0; }
+        .change { font-size: 12px; font-weight: bold; }
+        .up { color: #3fb950; }
+        .down { color: #f85149; }
+    </style>
+</head>
+<body>
+    <h1>Мой портфель</h1>
+    <div class="status" id="status">Загрузка данных...</div>
+    <div class="grid" id="portfolio-grid"></div>
+
+    <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynsJ2EGFpJBa9DAouEoP4s8vovb4ref_HzSZQ9qahEmfxhbnnSEg9Kt2CPvVL2ENIL/exec';
 
         const tickersList = [
@@ -82,3 +124,5 @@
         // Проверяем и обновляем каждую минуту
         setInterval(updatePrices, 60000);
     </script>
+</body>
+</html>
