@@ -1,92 +1,84 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio Price Tracker</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #0d1117;
-            color: #c9d1d9;
-            padding: 20px;
-            margin: 0;
-        }
-        h1 { text-align: center; color: #58a6ff; font-size: 22px; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 15px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .card {
-            background-color: #161b22;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #30363d;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-        .ticker { font-size: 13px; color: #8b949e; font-weight: bold; }
-        .price { font-size: 26px; font-weight: bold; color: #e6edf3; margin: 10px 0; }
-        .time { font-size: 11px; color: #8b949e; }
-        .loading { color: #d29922; font-style: italic; font-size: 18px; }
-    </style>
-</head>
-<body>
-    <h1>Мой портфель (Котировки)</h1>
-    <div class="grid" id="portfolio-grid"></div>
-
-    <script>
+<script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynsJ2EGFpJBa9DAouEoP4s8vovb4ref_HzSZQ9qahEmfxhbnnSEg9Kt2CPvVL2ENIL/exec';
 
-        // Ваш список из 20-50+ тикеров (акции, форекс через суффиксы, ETF)
-        const tickers = ['AAL', 'TSCO', 'LCID', 'AAPL', 'MSFT', 'EURUSD=X', 'USDJPY=X'];
+        const tickersList = [
+            'AAL', 'TSCO', 'LCID', 'AAPL', 'MSFT', 'NVDA', 'AMZN', 
+            'GOOGL', 'META', 'TSLA', 'AMD', 'NFLX', 'INTC', 'PYPL', 
+            'EURUSD=X', 'USDJPY=X'
+        ];
+
+        let timerId = null;
 
         function initGrid() {
             const grid = document.getElementById('portfolio-grid');
             grid.innerHTML = '';
-            tickers.forEach(t => {
+            tickersList.forEach(t => {
                 grid.innerHTML += `
                     <div class="card" id="card-${t}">
                         <div class="ticker">${t}</div>
-                        <div class="price loading" id="price-${t}">Загрузка...</div>
-                        <div class="time" id="time-${t}">Ожидание...</div>
+                        <div class="price" id="price-${t}">--</div>
+                        <div class="change" id="change-${t}">0.00%</div>
                     </div>
                 `;
             });
         }
 
+        // Проверка: открыта ли биржа (Пн-Пт, с 9:30 до 16:00 по EST/EDT)
+        function isMarketOpen() {
+            // Получаем текущее время именно в американской таймзоне Нью-Йорка
+            const now = new Date();
+            const nyTimeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+            const nyDate = new Date(nyTimeStr);
+            
+            const day = nyDate.getDay(); // 0 - ВС, 6 - СБ
+            if (day === 0 || day === 6) return false;
+
+            const hours = nyDate.getHours();
+            const minutes = nyDate.getMinutes();
+            const timeInMinutes = hours * 60 + minutes;
+
+            const marketOpenMinutes = 9 * 60 + 30;  // 9:30
+            const marketCloseMinutes = 16 * 60;     // 16:00
+
+            return timeInMinutes >= marketOpenMinutes && timeInMinutes <= marketCloseMinutes;
+        }
+
         async function updatePrices() {
-            for (const t of tickers) {
-                const priceEl = document.getElementById(`price-${t}`);
-                const timeEl = document.getElementById(`time-${t}`);
+            const statusEl = document.getElementById('status');
 
-                try {
-                    const response = await fetch(`${SCRIPT_URL}?ticker=${t}`);
-                    const data = await response.json();
+            if (!isMarketOpen()) {
+                statusEl.innerText = 'Биржа закрыта. Торги завершены / выходной день.';
+                return; // Пропускаем обновление вне сессии
+            }
 
-                    if (data.error) throw new Error(data.error);
+            try {
+                const response = await fetch(`${SCRIPT_URL}?tickers=${tickersList.join(',')}`);
+                const result = await response.json();
 
-                    priceEl.classList.remove('loading');
-                    priceEl.innerText = `${data.price.toFixed(2)} ${data.currency}`;
-                    timeEl.innerText = `Обновлено: ${data.time}`;
-                } catch (e) {
-                    console.error(`Ошибка по тикеру ${t}:`, e);
-                    priceEl.innerText = 'Ошибка';
-                }
-                
-                // Небольшая пауза между запросами (150мс), чтобы не перегружать скрипт
-                await new Promise(r => setTimeout(r, 150));
+                if (result.error) throw new Error(result.error);
+
+                result.data.forEach(item => {
+                    const priceEl = document.getElementById(`price-${item.ticker}`);
+                    const changeEl = document.getElementById(`change-${item.ticker}`);
+
+                    if (priceEl && changeEl) {
+                        priceEl.innerText = `${item.price.toFixed(2)} ${item.currency}`;
+                        const changeVal = item.change.toFixed(2);
+                        changeEl.innerText = `${changeVal > 0 ? '+' : ''}${changeVal}%`;
+                        changeEl.className = `change ${changeVal >= 0 ? 'up' : 'down'}`;
+                    }
+                });
+
+                statusEl.innerText = `Биржа открыта • Обновлено: ${result.time} (следующее через 60 сек)`;
+            } catch (e) {
+                console.error('Ошибка обновления:', e);
+                statusEl.innerText = 'Ошибка загрузки котировок';
             }
         }
 
-        // Инициализация и запуск
         initGrid();
         updatePrices();
-
-        // Обновление каждые 60 секунд
+        
+        // Проверяем и обновляем каждую минуту
         setInterval(updatePrices, 60000);
     </script>
-</body>
-</html>
