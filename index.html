@@ -2,127 +2,376 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio Price Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trading Journal</title>
     <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --up-color: #58a6ff; /* Синий для плюса */
+            --down-color: #f85149; /* Красный для минуса */
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #0d1117;
-            color: #c9d1d9;
-            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            -webkit-user-select: none; /* Защита от выделения текста при долгом тапе */
+            user-select: none;
         }
-        h1 { text-align: center; color: #58a6ff; font-size: 22px; margin-bottom: 5px; }
-        .status { text-align: center; font-size: 12px; color: #8b949e; margin-bottom: 25px; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 15px;
-            max-width: 1200px;
-            margin: 0 auto;
+
+        /* Таблица портфеля */
+        .table-container {
+            flex-grow: 1;
+            width: 100%;
+            overflow-x: auto;
         }
-        .card {
-            background-color: #161b22;
-            padding: 18px;
-            border-radius: 10px;
-            border: 1px solid #30363d;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
         }
-        .ticker { font-size: 13px; color: #8b949e; font-weight: bold; }
-        .price { font-size: 22px; font-weight: bold; color: #e6edf3; margin: 8px 0; }
-        .change { font-size: 12px; font-weight: bold; }
-        .up { color: #3fb950; }
-        .down { color: #f85149; }
+
+        th {
+            position: sticky;
+            top: 0;
+            background-color: var(--bg-color);
+            color: var(--text-muted);
+            font-weight: normal;
+            font-size: 12px;
+            padding: 8px 4px;
+            border-bottom: 1px solid var(--border);
+            text-align: right;
+        }
+
+        th:first-child, td:first-child { text-align: left; padding-left: 10px; }
+        th:last-child, td:last-child { padding-right: 10px; }
+
+        td {
+            padding: 10px 4px;
+            border-bottom: 1px solid var(--border);
+            text-align: right;
+            vertical-align: middle;
+        }
+
+        .name-col { font-weight: bold; }
+        .qty-col, .stk-col { color: var(--text-main); }
+        .price-col { font-weight: bold; }
+        
+        .up { color: var(--up-color); }
+        .down { color: var(--down-color); }
+
+        /* Нижняя панель управления */
+        .bottom-panel {
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border);
+            padding: 15px 10px;
+            position: sticky;
+            bottom: 0;
+        }
+
+        .add-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"], input[type="number"] {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            flex-grow: 1;
+            font-size: 16px; /* 16px предотвращает автозум на iOS */
+        }
+
+        button {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .toggle-view {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        /* Модальное окно редактирования */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 350px;
+        }
+
+        .modal h3 { margin-top: 0; margin-bottom: 15px; color: var(--text-main); }
+        .modal-field { margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-field input { width: 60%; }
+        
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-save { background-color: #1f6feb; flex: 1; }
+        .btn-delete { background-color: var(--down-color); flex: 1; }
+        .btn-cancel { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); flex: 1; }
+
+        /* Десктопный вид (пример для будущей настройки тумблера) */
+        body.desktop-view { max-width: 800px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
     </style>
 </head>
 <body>
-    <h1>Мой портфель</h1>
-    <div class="status" id="status">Загрузка данных...</div>
-    <div class="grid" id="portfolio-grid"></div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Stk</th>
+                    <th>Qty</th>
+                    <th>Last</th>
+                    <th>Current</th>
+                    <th>Delta</th>
+                    <th>%</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <!-- Строки генерируются через JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="bottom-panel">
+        <div class="add-row">
+            <input type="text" id="new-ticker" placeholder="Тикер (напр. TSLA)" autocomplete="off">
+            <button onclick="addNewTicker()">Добавить</button>
+        </div>
+        <div class="toggle-view" onclick="document.body.classList.toggle('desktop-view')">
+            Переключить вид (Моб/Десктоп)
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal">
+            <h3 id="modal-title">Редактирование</h3>
+            <div class="modal-field">
+                <label>Общее (Stk):</label>
+                <input type="number" id="edit-stk" step="any">
+            </div>
+            <div class="modal-field">
+                <label>Сделка (Qty):</label>
+                <input type="number" id="edit-qty" step="any">
+            </div>
+            <div class="modal-field">
+                <label>Цена (Last):</label>
+                <input type="number" id="edit-last" step="any">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-save" onclick="savePosition()">Сохр.</button>
+                <button class="btn-delete" onclick="deletePosition()">Удалить</button>
+                <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynsJ2EGFpJBa9DAouEoP4s8vovb4ref_HzSZQ9qahEmfxhbnnSEg9Kt2CPvVL2ENIL/exec';
-
-        const tickersList = [
-            'AAL', 'TSCO', 'LCID', 'AAPL', 'MSFT', 'NVDA', 'AMZN', 
-            'GOOGL', 'META', 'TSLA', 'AMD', 'NFLX', 'INTC', 'PYPL', 
-            'EURUSD=X', 'USDJPY=X'
+        
+        // Базовый портфель, если localStorage пуст
+        const defaultPortfolio = [
+            { ticker: 'LCID', stk: 10, qty: 5, last: 7.58, current: 7.04, delta: -0.54, percent: -7 },
+            { ticker: 'SOFI', stk: 28, qty: -4, last: 16.40, current: 18.38, delta: 1.98, percent: 12 },
+            { ticker: 'TSCO', stk: 20, qty: -1, last: 30.49, current: 34.56, delta: 4.07, percent: 13 },
+            { ticker: 'AAL', stk: 0, qty: -3, last: 13.27, current: 15.94, delta: 2.67, percent: 20 }
         ];
 
-        let timerId = null;
+        let portfolio = JSON.parse(localStorage.getItem('myPortfolio')) || defaultPortfolio;
+        let editingTicker = null;
+        let pressTimer = null;
 
-        function initGrid() {
-            const grid = document.getElementById('portfolio-grid');
-            grid.innerHTML = '';
-            tickersList.forEach(t => {
-                grid.innerHTML += `
-                    <div class="card" id="card-${t}">
-                        <div class="ticker">${t}</div>
-                        <div class="price" id="price-${t}">--</div>
-                        <div class="change" id="change-${t}">0.00%</div>
-                    </div>
+        function saveToLocal() {
+            localStorage.setItem('myPortfolio', JSON.stringify(portfolio));
+        }
+
+        // Рендер таблицы с сортировкой по модулю процента
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            // Сортировка: самое значительное изменение (по модулю) наверху
+            portfolio.sort((a, b) => Math.abs(b.percent) - Math.abs(a.percent));
+
+            portfolio.forEach(item => {
+                const isUp = item.delta > 0;
+                const isDown = item.delta < 0;
+                const colorClass = isUp ? 'up' : (isDown ? 'down' : '');
+                const sign = isUp ? '+' : '';
+
+                const tr = document.createElement('tr');
+                
+                // Обработчики долгого нажатия для мобильных
+                tr.addEventListener('touchstart', (e) => startLongPress(e, item.ticker));
+                tr.addEventListener('touchend', cancelLongPress);
+                tr.addEventListener('touchmove', cancelLongPress);
+                
+                // Для десктопа (правый клик или долгое удержание мыши)
+                tr.addEventListener('mousedown', (e) => startLongPress(e, item.ticker));
+                tr.addEventListener('mouseup', cancelLongPress);
+                tr.addEventListener('mouseleave', cancelLongPress);
+
+                tr.innerHTML = `
+                    <td class="name-col">${item.ticker}</td>
+                    <td class="stk-col">${item.stk || ''}</td>
+                    <td class="qty-col">${item.qty || ''}</td>
+                    <td class="price-col">${item.last.toFixed(2)}</td>
+                    <td class="price-col">${item.current.toFixed(2)}</td>
+                    <td class="${colorClass}">${sign}${item.delta.toFixed(2)}</td>
+                    <td class="${colorClass}">${sign}${item.percent.toFixed(0)}</td>
                 `;
+                tbody.appendChild(tr);
             });
         }
 
-        // Проверка: открыта ли биржа (Пн-Пт, с 9:30 до 16:00 по EST/EDT)
-        function isMarketOpen() {
-            // Получаем текущее время именно в американской таймзоне Нью-Йорка
-            const now = new Date();
-            const nyTimeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
-            const nyDate = new Date(nyTimeStr);
-            
-            const day = nyDate.getDay(); // 0 - ВС, 6 - СБ
-            if (day === 0 || day === 6) return false;
-
-            const hours = nyDate.getHours();
-            const minutes = nyDate.getMinutes();
-            const timeInMinutes = hours * 60 + minutes;
-
-            const marketOpenMinutes = 9 * 60 + 30;  // 9:30
-            const marketCloseMinutes = 16 * 60;     // 16:00
-
-            return timeInMinutes >= marketOpenMinutes && timeInMinutes <= marketCloseMinutes;
+        // Логика долгого нажатия
+        function startLongPress(e, ticker) {
+            pressTimer = setTimeout(() => {
+                openEditModal(ticker);
+                if (navigator.vibrate) navigator.vibrate(50); // Легкая вибрация при срабатывании
+            }, 600); // 600 миллисекунд удержания
         }
 
-        async function updatePrices() {
-            const statusEl = document.getElementById('status');
+        function cancelLongPress() {
+            if (pressTimer) clearTimeout(pressTimer);
+        }
 
-            if (!isMarketOpen()) {
-                statusEl.innerText = 'Биржа закрыта. Торги завершены / выходной день.';
-                return; // Пропускаем обновление вне сессии
+        // Управление модальным окном
+        function openEditModal(ticker) {
+            cancelLongPress();
+            editingTicker = ticker;
+            const item = portfolio.find(p => p.ticker === ticker);
+            
+            document.getElementById('modal-title').innerText = `Изменить: ${ticker}`;
+            document.getElementById('edit-stk').value = item.stk || 0;
+            document.getElementById('edit-qty').value = item.qty || 0;
+            document.getElementById('edit-last').value = item.last || 0;
+            
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            editingTicker = null;
+        }
+
+        function savePosition() {
+            const item = portfolio.find(p => p.ticker === editingTicker);
+            if (item) {
+                item.stk = parseFloat(document.getElementById('edit-stk').value) || 0;
+                item.qty = parseFloat(document.getElementById('edit-qty').value) || 0;
+                item.last = parseFloat(document.getElementById('edit-last').value) || 0;
+                
+                // Пересчет дельты при изменении цены входа
+                item.delta = item.current > 0 ? (item.current - item.last) : 0;
+                item.percent = item.last > 0 ? (item.delta / item.last) * 100 : 0;
             }
+            saveToLocal();
+            closeModal();
+            renderTable();
+        }
+
+        function deletePosition() {
+            if(confirm(`Точно удалить ${editingTicker}?`)) {
+                portfolio = portfolio.filter(p => p.ticker !== editingTicker);
+                saveToLocal();
+                closeModal();
+                renderTable();
+            }
+        }
+
+        function addNewTicker() {
+            const input = document.getElementById('new-ticker');
+            let ticker = input.value.trim().toUpperCase();
+            
+            if (!ticker) return;
+            if (portfolio.some(p => p.ticker === ticker)) {
+                alert('Инструмент уже в списке!');
+                return;
+            }
+
+            portfolio.push({
+                ticker: ticker, stk: 0, qty: 0, last: 0, current: 0, delta: 0, percent: 0
+            });
+            
+            input.value = '';
+            saveToLocal();
+            renderTable();
+            updatePrices(); // Сразу запрашиваем цену для нового инструмента
+        }
+
+        // Обновление котировок
+        async function updatePrices() {
+            if (portfolio.length === 0) return;
+            const tickersList = portfolio.map(p => p.ticker).join(',');
 
             try {
-                const response = await fetch(`${SCRIPT_URL}?tickers=${tickersList.join(',')}`);
+                const response = await fetch(`${SCRIPT_URL}?tickers=${tickersList}`);
                 const result = await response.json();
 
-                if (result.error) throw new Error(result.error);
-
-                result.data.forEach(item => {
-                    const priceEl = document.getElementById(`price-${item.ticker}`);
-                    const changeEl = document.getElementById(`change-${item.ticker}`);
-
-                    if (priceEl && changeEl) {
-                        priceEl.innerText = `${item.price.toFixed(2)} ${item.currency}`;
-                        const changeVal = item.change.toFixed(2);
-                        changeEl.innerText = `${changeVal > 0 ? '+' : ''}${changeVal}%`;
-                        changeEl.className = `change ${changeVal >= 0 ? 'up' : 'down'}`;
-                    }
-                });
-
-                statusEl.innerText = `Биржа открыта • Обновлено: ${result.time} (следующее через 60 сек)`;
+                if (!result.error && result.data) {
+                    result.data.forEach(apiItem => {
+                        const portItem = portfolio.find(p => p.ticker === apiItem.ticker);
+                        if (portItem) {
+                            portItem.current = apiItem.price;
+                            if (portItem.last > 0) {
+                                portItem.delta = portItem.current - portItem.last;
+                                portItem.percent = (portItem.delta / portItem.last) * 100;
+                            } else {
+                                // Если цена входа не задана, берем изменения за день из API (если нужно)
+                                portItem.percent = apiItem.change;
+                            }
+                        }
+                    });
+                    saveToLocal();
+                    renderTable();
+                }
             } catch (e) {
                 console.error('Ошибка обновления:', e);
-                statusEl.innerText = 'Ошибка загрузки котировок';
             }
         }
 
-        initGrid();
+        // Инициализация
+        renderTable();
         updatePrices();
-        
-        // Проверяем и обновляем каждую минуту
-        setInterval(updatePrices, 60000);
+        setInterval(updatePrices, 60000); // Раз в 60 сек
     </script>
 </body>
 </html>
