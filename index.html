@@ -3,72 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AAL Stock Price Tracker</title>
+    <title>Portfolio Price Tracker</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: #0d1117;
             color: #c9d1d9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            padding: 20px;
             margin: 0;
+        }
+        h1 { text-align: center; color: #58a6ff; font-size: 22px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
         .card {
             background-color: #161b22;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
             border: 1px solid #30363d;
-            width: 320px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
-        h1 { margin-top: 0; color: #58a6ff; font-size: 24px; }
-        .ticker { font-size: 14px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; }
-        .price { font-size: 38px; font-weight: bold; color: #e6edf3; margin: 15px 0; }
-        .update-time { font-size: 12px; color: #8b949e; }
-        .loading { color: #d29922; font-style: italic; }
+        .ticker { font-size: 13px; color: #8b949e; font-weight: bold; }
+        .price { font-size: 26px; font-weight: bold; color: #e6edf3; margin: 10px 0; }
+        .time { font-size: 11px; color: #8b949e; }
+        .loading { color: #d29922; font-style: italic; font-size: 18px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="ticker">American Airlines (AAL)</div>
-        <h1>Цена акции</h1>
-        <div id="price" class="price loading">Загрузка...</div>
-        <div class="update-time" id="time">Обновление каждые 60 сек</div>
-    </div>
+    <h1>Мой портфель (Котировки)</h1>
+    <div class="grid" id="portfolio-grid"></div>
 
     <script>
-        // Вставьте сюда вашу ссылку на Google Apps Script Web App
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynsJ2EGFpJBa9DAouEoP4s8vovb4ref_HzSZQ9qahEmfxhbnnSEg9Kt2CPvVL2ENIL/exec';
+        const SCRIPT_URL = 'ВАШ_WEB_APP_URL_ИЗ_GOOGLE_SCRIPT';
 
-        async function fetchStockPrice() {
-            const priceElement = document.getElementById('price');
-            const timeElement = document.getElementById('time');
+        // Ваш список из 20-50+ тикеров (акции, форекс через суффиксы, ETF)
+        const tickers = ['AAL', 'TSCO', 'LCID', 'AAPL', 'MSFT', 'EURUSD=X', 'USDJPY=X'];
 
-            try {
-                const response = await fetch(SCRIPT_URL);
-                if (!response.ok) throw new Error('Ошибка сети');
+        function initGrid() {
+            const grid = document.getElementById('portfolio-grid');
+            grid.innerHTML = '';
+            tickers.forEach(t => {
+                grid.innerHTML += `
+                    <div class="card" id="card-${t}">
+                        <div class="ticker">${t}</div>
+                        <div class="price loading" id="price-${t}">Загрузка...</div>
+                        <div class="time" id="time-${t}">Ожидание...</div>
+                    </div>
+                `;
+            });
+        }
+
+        async function updatePrices() {
+            for (const t of tickers) {
+                const priceEl = document.getElementById(`price-${t}`);
+                const timeEl = document.getElementById(`time-${t}`);
+
+                try {
+                    const response = await fetch(`${SCRIPT_URL}?ticker=${t}`);
+                    const data = await response.json();
+
+                    if (data.error) throw new Error(data.error);
+
+                    priceEl.classList.remove('loading');
+                    priceEl.innerText = `${data.price.toFixed(2)} ${data.currency}`;
+                    timeEl.innerText = `Обновлено: ${data.time}`;
+                } catch (e) {
+                    console.error(`Ошибка по тикеру ${t}:`, e);
+                    priceEl.innerText = 'Ошибка';
+                }
                 
-                const data = await response.json();
-                if (data.error) throw new Error(data.error);
-
-                priceElement.classList.remove('loading');
-                priceElement.innerText = `${data.price.toFixed(2)} ${data.currency}`;
-                timeElement.innerText = `Обновлено: ${data.time}`;
-            } catch (error) {
-                console.error('Ошибка при получении данных:', error);
-                priceElement.innerText = 'Ошибка API';
-                timeElement.innerText = 'Повтор через 60 сек...';
+                // Небольшая пауза между запросами (150мс), чтобы не перегружать скрипт
+                await new Promise(r => setTimeout(r, 150));
             }
         }
 
-        // Первичный запуск
-        fetchStockPrice();
+        // Инициализация и запуск
+        initGrid();
+        updatePrices();
 
-        // Автообновление каждые 60 секунд
-        setInterval(fetchStockPrice, 60000);
+        // Обновление каждые 60 секунд
+        setInterval(updatePrices, 60000);
     </script>
 </body>
 </html>
