@@ -40,31 +40,23 @@
     </div>
 
     <script>
+        // Вставьте сюда вашу ссылку на Google Apps Script Web App
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynsJ2EGFpJBa9DAouEoP4s8vovb4ref_HzSZQ9qahEmfxhbnnSEg9Kt2CPvVL2ENIL/exec';
+
         async function fetchStockPrice() {
             const priceElement = document.getElementById('price');
             const timeElement = document.getElementById('time');
-            
-            // Используем публичный API Yahoo Finance через CORS-прокси allorigins
-            const yahooURL = 'https://query1.finance.yahoo.com/v8/finance/chart/AAL?interval=1m';
-            const proxyURL = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooURL)}`;
 
             try {
-                const response = await fetch(proxyURL);
+                const response = await fetch(SCRIPT_URL);
                 if (!response.ok) throw new Error('Ошибка сети');
                 
                 const data = await response.json();
-                const contents = JSON.parse(data.contents);
-                
-                // Достаем актуальную цену из ответа Yahoo Chart API
-                const meta = contents.chart.result[0].meta;
-                const currentPrice = meta.regularMarketPrice || meta.chartPreviousClose;
-                const currency = meta.currency || 'USD';
+                if (data.error) throw new Error(data.error);
 
                 priceElement.classList.remove('loading');
-                priceElement.innerText = `${currentPrice.toFixed(2)} ${currency}`;
-                
-                const now = new Date();
-                timeElement.innerText = `Обновлено: ${now.toLocaleTimeString()}`;
+                priceElement.innerText = `${data.price.toFixed(2)} ${data.currency}`;
+                timeElement.innerText = `Обновлено: ${data.time}`;
             } catch (error) {
                 console.error('Ошибка при получении данных:', error);
                 priceElement.innerText = 'Ошибка API';
@@ -72,10 +64,10 @@
             }
         }
 
-        // Первичный запуск при открытии страницы
+        // Первичный запуск
         fetchStockPrice();
 
-        // Автообновление каждые 60 секунд (60000 миллисекунд)
+        // Автообновление каждые 60 секунд
         setInterval(fetchStockPrice, 60000);
     </script>
 </body>
