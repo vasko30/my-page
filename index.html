@@ -222,44 +222,71 @@
             localStorage.setItem('myPortfolio', JSON.stringify(portfolio));
         }
 
-        // Рендер таблицы с сортировкой по модулю процента
-        function renderTable() {
-            const tbody = document.getElementById('table-body');
-            tbody.innerHTML = '';
+        // Рендер таблицы с комбинированной сортировкой
+function renderTable() {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
 
-            // Сортировка: самое значительное изменение (по модулю) наверху
-            portfolio.sort((a, b) => Math.abs(b.percent) - Math.abs(a.percent));
+    // Вспомогательная функция: проверяет, участвует ли инструмент в приоритетной сортировке
+    function isSortingEligible(item) {
+        const hasStk = item.stk !== null && item.stk !== undefined && item.stk !== 0 && item.stk !== '0' && item.stk !== '';
+        
+        // 1. Если позиция есть в портфеле — участвует всегда
+        if (hasStk) return true; 
+        
+        // 2. Если позиции нет — участвует ТОЛЬКО если текущая цена снизилась относительно Last (delta < 0)
+        return item.delta < 0;
+    }
 
-            portfolio.forEach(item => {
-                const isUp = item.delta > 0;
-                const isDown = item.delta < 0;
-                const colorClass = isUp ? 'up' : (isDown ? 'down' : '');
-                const sign = isUp ? '+' : '';
+    portfolio.sort((a, b) => {
+        const aEligible = isSortingEligible(a);
+        const bEligible = isSortingEligible(b);
 
-                const tr = document.createElement('tr');
-                
-                // Обработчики долгого нажатия для мобильных
-                tr.addEventListener('touchstart', (e) => startLongPress(e, item.ticker));
-                tr.addEventListener('touchend', cancelLongPress);
-                tr.addEventListener('touchmove', cancelLongPress);
-                
-                // Для десктопа (правый клик или долгое удержание мыши)
-                tr.addEventListener('mousedown', (e) => startLongPress(e, item.ticker));
-                tr.addEventListener('mouseup', cancelLongPress);
-                tr.addEventListener('mouseleave', cancelLongPress);
+        // Позиции, участвующие в сортировке, всегда выше остальных
+        if (aEligible && !bEligible) return -1;
+        if (!aEligible && bEligible) return 1;
 
-                tr.innerHTML = `
-                    <td class="name-col">${item.ticker}</td>
-                    <td class="stk-col">${item.stk || ''}</td>
-                    <td class="qty-col">${item.qty || ''}</td>
-                    <td class="price-col">${item.last.toFixed(2)}</td>
-                    <td class="price-col">${item.current.toFixed(2)}</td>
-                    <td class="${colorClass}">${sign}${item.delta.toFixed(2)}</td>
-                    <td class="${colorClass}">${sign}${item.percent.toFixed(0)}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+        // Если оба инструмента в одной группе (оба активны или оба неактивны),
+        // сортируем их по модулю процента изменения (от наибольшего к наименьшему)
+        return Math.abs(b.percent) - Math.abs(a.percent);
+    });
+
+    portfolio.forEach(item => {
+        const isUp = item.delta > 0;
+        const isDown = item.delta < 0;
+        const colorClass = isUp ? 'up' : (isDown ? 'down' : '');
+        const sign = isUp ? '+' : '';
+
+        const tr = document.createElement('tr');
+        
+        // Визуально чуть приглушаем строки без позиции, которые не упали
+        const hasStk = item.stk !== null && item.stk !== undefined && item.stk !== 0 && item.stk !== '0' && item.stk !== '';
+        if (!hasStk && item.delta >= 0) {
+            tr.style.opacity = '0.5';
         }
+
+        // Обработчики долгого нажатия для мобильных
+        tr.addEventListener('touchstart', (e) => startLongPress(e, item.ticker));
+        tr.addEventListener('touchend', cancelLongPress);
+        tr.addEventListener('touchmove', cancelLongPress);
+        
+        // Для десктопа
+        tr.addEventListener('mousedown', (e) => startLongPress(e, item.ticker));
+        tr.addEventListener('mouseup', cancelLongPress);
+        tr.addEventListener('mouseleave', cancelLongPress);
+
+        tr.innerHTML = `
+            <td class="name-col">${item.ticker}</td>
+            <td class="stk-col">${item.stk || ''}</td>
+            <td class="qty-col">${item.qty || ''}</td>
+            <td class="price-col">${item.last ? item.last.toFixed(2) : ''}</td>
+            <td class="price-col">${item.current ? item.current.toFixed(2) : ''}</td>
+            <td class="${colorClass}">${sign}${item.delta ? item.delta.toFixed(2) : '0.00'}</td>
+            <td class="${colorClass}">${sign}${item.percent ? item.percent.toFixed(0) : '0'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
 
         // Логика долгого нажатия
         function startLongPress(e, ticker) {
