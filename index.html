@@ -6,14 +6,20 @@
     <title>Trading Journal</title>
     <style>
         :root {
-            --bg-color: #0d1117;
-            --card-bg: #161b22;
-            --border: #30363d;
-            --text-main: #c9d1d9;
-            --text-muted: #8b949e;
-            --up-color: #58a6ff; /* Синий для плюса */
-            --down-color: #f85149; /* Красный для минуса */
-        }
+    --bg-color: #0d1117;
+    --card-bg: #161b22;
+    --border: #30363d;
+    --text-main: #c9d1d9;
+    --text-muted: #8b949e;
+    --up-color: #00e5ff;   /* Яркий неоново-голубой/синий */
+    --down-color: #ff334b; /* Кислотно-красный */
+}
+
+/* Отдельный стиль для столбца процента */
+.percent-col {
+    font-size: 16px; /* Увеличено с 14px до 16px */
+    font-weight: bold;
+}
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -276,14 +282,14 @@ function renderTable() {
         tr.addEventListener('mouseleave', cancelLongPress);
 
         tr.innerHTML = `
-            <td class="name-col">${item.ticker}</td>
-            <td class="stk-col">${item.stk || ''}</td>
-            <td class="qty-col">${item.qty || ''}</td>
-            <td class="price-col">${item.last ? item.last.toFixed(2) : ''}</td>
-            <td class="price-col">${item.current ? item.current.toFixed(2) : ''}</td>
-            <td class="${colorClass}">${sign}${item.delta ? item.delta.toFixed(2) : '0.00'}</td>
-            <td class="${colorClass}">${sign}${item.percent ? item.percent.toFixed(0) : '0'}</td>
-        `;
+    <td class="name-col">${item.ticker}</td>
+    <td class="stk-col">${item.stk || ''}</td>
+    <td class="qty-col">${item.qty || ''}</td>
+    <td class="price-col">${item.last ? item.last.toFixed(2) : ''}</td>
+    <td class="price-col">${item.current ? item.current.toFixed(2) : ''}</td>
+    <td class="${colorClass}">${sign}${item.delta ? item.delta.toFixed(2) : '0.00'}</td>
+    <td class="${colorClass} percent-col">${sign}${item.percent ? item.percent.toFixed(1) : '0.0'}</td>
+`;
         tbody.appendChild(tr);
     });
 }
