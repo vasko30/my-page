@@ -380,63 +380,73 @@
             updatePrices();
         }
 
-        // Выгрузка портфеля с выбором куда сохранить/отправить (Web Share API)
+        // Надежный экспорт в JSON с поддержкой Web Share API и Blob URL
 async function exportData() {
     const jsonString = JSON.stringify(portfolio, null, 2);
     const fileName = 'portfolio_backup.json';
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const file = new File([blob], fileName, { type: 'application/json' });
+    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
 
-    // Если браузер поддерживает меню «Поделиться» (iOS Safari, мобильный Chrome)
+    // 1. Попытка вызвать системное меню «Поделиться» (для iOS / Android)
+    const file = new File([blob], fileName, { type: 'application/json' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
             await navigator.share({
                 files: [file],
                 title: 'Резервная копия портфеля',
-                text: 'Файл бэкапа портфеля'
+                text: 'Бэкап портфеля'
             });
             return;
         } catch (err) {
-            // Если пользователь просто закрыл меню «Поделиться», ничего не делаем
-            if (err.name === 'AbortError') return;
+            if (err.name === 'AbortError') return; // Пользователь сам отменил отправку
         }
     }
 
-    // Резервный фолбэк для десктопа или старых браузеров
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
+    // 2. Скачивание через Blob URL (Универсально для ПК и мобильных браузеров)
+    const url = URL.createObjectURL(blob);
     const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", fileName);
+    downloadAnchor.href = url;
+    downloadAnchor.download = fileName;
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+    
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-        // Загрузка портфеля из JSON файла
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+// Безопасный импорт с очисткой от скрытых символов BOM
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const importedPortfolio = JSON.parse(e.target.result);
-                    if (Array.isArray(importedPortfolio)) {
-                        portfolio = importedPortfolio;
-                        saveToLocal();
-                        renderTable();
-                        updatePrices();
-                        alert('Портфель успешно загружен!');
-                    } else {
-                        alert('Ошибка: неверный формат файла!');
-                    }
-                } catch (err) {
-                    alert('Ошибка чтения файла: ' + err.message);
-                }
-            };
-            reader.readAsText(file);
-            event.target.value = '';
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            let rawText = e.target.result;
+            
+            if (typeof rawText === 'string') {
+                // Удаляем скрытый маркер UTF-8 BOM (\uFEFF) и лишние пробелы в начале/конце
+                rawText = rawText.trim().replace(/^\uFEFF/, '');
+            }
+
+            const importedPortfolio = JSON.parse(rawText);
+
+            if (Array.isArray(importedPortfolio)) {
+                portfolio = importedPortfolio;
+                saveToLocal();
+                renderTable();
+                updatePrices();
+                alert('Портфель успешно загружен!');
+            } else {
+                alert('Ошибка: Файл должен содержать массив позиций.');
+            }
+        } catch (err) {
+            alert(`Ошибка чтения файла: ${err.message}\nУбедитесь, что вы выбираете созданный .json файл.`);
         }
+    };
+    
+    reader.readAsText(file, 'UTF-8');
+    event.target.value = ''; // Сброс выбранного файла для возможности повторной загрузки
+}
 
         async function updatePrices() {
             if (portfolio.length === 0) return;
