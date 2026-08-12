@@ -380,16 +380,37 @@
             updatePrices();
         }
 
-        // Выгрузка текущего состояния портфеля в JSON файл
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(portfolio, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `portfolio_backup.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+        // Выгрузка портфеля с выбором куда сохранить/отправить (Web Share API)
+async function exportData() {
+    const jsonString = JSON.stringify(portfolio, null, 2);
+    const fileName = 'portfolio_backup.json';
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const file = new File([blob], fileName, { type: 'application/json' });
+
+    // Если браузер поддерживает меню «Поделиться» (iOS Safari, мобильный Chrome)
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({
+                files: [file],
+                title: 'Резервная копия портфеля',
+                text: 'Файл бэкапа портфеля'
+            });
+            return;
+        } catch (err) {
+            // Если пользователь просто закрыл меню «Поделиться», ничего не делаем
+            if (err.name === 'AbortError') return;
         }
+    }
+
+    // Резервный фолбэк для десктопа или старых браузеров
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", fileName);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+}
 
         // Загрузка портфеля из JSON файла
         function importData(event) {
