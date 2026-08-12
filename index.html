@@ -1,410 +1,367 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trading Journal</title>
-    <style>
-        :root {
-    --bg-color: #0d1117;
-    --card-bg: #161b22;
-    --border: #30363d;
-    --text-main: #c9d1d9;
-    --text-muted: #8b949e;
-    --up-color: #00e5ff;   /* Яркий неоново-голубой/синий */
-    --down-color: #ff334b; /* Кислотно-красный */
-}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Trading Journal</title>
+  <style>
+    /* Базовые стили и темная тема */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0d1117;
+      color: #c9d1d9;
+      -webkit-font-smoothing: antialiased;
+    }
 
-/* Отдельный стиль для столбца процента */
-.percent-col {
-    font-size: 16px; /* Увеличено с 14px до 16px */
-    font-weight: bold;
-}
+    /* Контейнер таблицы */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 20px;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            -webkit-user-select: none; /* Защита от выделения текста при долгом тапе */
-            user-select: none;
-        }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      min-width: 320px;
+    }
 
-        /* Таблица портфеля */
-        .table-container {
-            flex-grow: 1;
-            width: 100%;
-            overflow-x: auto;
-        }
+    th, td {
+      padding: 12px 8px;
+      text-align: right;
+      border-bottom: 1px solid #21262d;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
+    th:first-child, td:first-child {
+      text-align: left;
+      padding-left: 15px;
+    }
+    
+    th:last-child, td:last-child {
+      padding-right: 15px;
+    }
 
-        th {
-            position: sticky;
-            top: 0;
-            background-color: var(--bg-color);
-            color: var(--text-muted);
-            font-weight: normal;
-            font-size: 12px;
-            padding: 8px 4px;
-            border-bottom: 1px solid var(--border);
-            text-align: right;
-        }
+    th {
+      color: #8b949e;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
 
-        th:first-child, td:first-child { text-align: left; padding-left: 10px; }
-        th:last-child, td:last-child { padding-right: 10px; }
+    /* Цвета для PnL */
+    .profit { color: #3fb950; }
+    .loss { color: #f85149; }
+    .neutral { color: #8b949e; }
 
-        td {
-            padding: 10px 4px;
-            border-bottom: 1px solid var(--border);
-            text-align: right;
-            vertical-align: middle;
-        }
+    .ticker-name {
+      font-weight: 600;
+      color: #c9d1d9;
+    }
 
-        .name-col { font-weight: bold; }
-        .qty-col, .stk-col { color: var(--text-main); }
-        .price-col { font-weight: bold; }
-        
-        .up { color: var(--up-color); }
-        .down { color: var(--down-color); }
+    /* --- НОВАЯ НИЖНЯЯ ПАНЕЛЬ (В потоке страницы) --- */
+    .bottom-panel {
+      position: relative;
+      width: 100%;
+      padding: 20px 15px 40px 15px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      background-color: #0d1117;
+      border-top: 1px solid #21262d;
+    }
 
-        /* Нижняя панель управления */
-        .bottom-panel {
-            background-color: var(--card-bg);
-            border-top: 1px solid var(--border);
-            padding: 15px 10px;
-            position: sticky;
-            bottom: 0;
-        }
+    /* 1. Строка с вводом тикера */
+    .add-ticker-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 400px;
+    }
 
-        .add-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
+    .add-ticker-row input {
+      flex: 1;
+      padding: 12px;
+      background-color: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+    }
+    
+    .add-ticker-row input:focus {
+      border-color: #58a6ff;
+    }
 
-        input[type="text"], input[type="number"] {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 10px;
-            border-radius: 6px;
-            flex-grow: 1;
-            font-size: 16px; /* 16px предотвращает автозум на iOS */
-        }
+    .add-ticker-row button {
+      background-color: #238636;
+      color: #fff;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
 
-        button {
-            background-color: #238636;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+    .add-ticker-row button:active {
+      background-color: #2ea043;
+    }
 
-        .toggle-view {
-            text-align: center;
-            font-size: 12px;
-            color: var(--text-muted);
-            text-decoration: underline;
-            cursor: pointer;
-        }
+    /* 2. Кнопки экспорта / импорта */
+    .transfer-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 400px;
+    }
 
-        /* Модальное окно редактирования */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
+    .btn-transfer {
+      flex: 1;
+      padding: 10px 12px;
+      background-color: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
 
-        .modal {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            width: 100%;
-            max-width: 350px;
-        }
+    .btn-transfer:active {
+      background-color: #30363d;
+    }
 
-        .modal h3 { margin-top: 0; margin-bottom: 15px; color: var(--text-main); }
-        .modal-field { margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .modal-field input { width: 60%; }
-        
-        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-        .btn-save { background-color: #1f6feb; flex: 1; }
-        .btn-delete { background-color: var(--down-color); flex: 1; }
-        .btn-cancel { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); flex: 1; }
+    /* 3. Переключатель вида */
+    .view-switch-row a {
+      color: #58a6ff;
+      font-size: 14px;
+      text-decoration: none;
+      padding: 8px;
+    }
+    
+    .view-switch-row a:hover {
+      text-decoration: underline;
+    }
 
-        /* Десктопный вид (пример для будущей настройки тумблера) */
-        body.desktop-view { max-width: 800px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
-    </style>
+    /* Альтернативный вид (Десктоп/Компактный) */
+    body.desktop-view table {
+      font-size: 16px;
+    }
+    body.desktop-view th, body.desktop-view td {
+      padding: 16px 12px;
+    }
+  </style>
 </head>
 <body>
 
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Stk</th>
-                    <th>Qty</th>
-                    <th>Last</th>
-                    <th>Current</th>
-                    <th>Delta</th>
-                    <th>%</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                <!-- Строки генерируются через JS -->
-            </tbody>
-        </table>
+  <!-- Таблица позиций -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Qty</th>
+          <th>Avg</th>
+          <th>Price</th>
+          <th>PnL $</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <!-- Строки генерируются через JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Обновленная нижняя панель -->
+  <div class="bottom-panel">
+    
+    <!-- 1. Добавление позиции -->
+    <div class="add-ticker-row">
+      <input type="text" id="tickerInput" placeholder="Тикер (напр. TSLA)" autocomplete="off">
+      <button id="addBtn" onclick="addPosition()">Добавить</button>
     </div>
 
-    <div class="bottom-panel">
-        <div class="add-row">
-            <input type="text" id="new-ticker" placeholder="Тикер (напр. TSLA)" autocomplete="off">
-            <button onclick="addNewTicker()">Добавить</button>
-        </div>
-        <div class="toggle-view" onclick="document.body.classList.toggle('desktop-view')">
-            Переключить вид (Моб/Десктоп)
-        </div>
+    <!-- 2. Выгрузка / Загрузка (Экспорт/Импорт) -->
+    <div class="transfer-row">
+      <button class="btn-transfer" onclick="exportState()">Выгрузить JSON</button>
+      <button class="btn-transfer" onclick="document.getElementById('importFile').click()">Загрузить JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importState(event)">
     </div>
 
-    <!-- Модальное окно редактирования -->
-    <div class="modal-overlay" id="edit-modal">
-        <div class="modal">
-            <h3 id="modal-title">Редактирование</h3>
-            <div class="modal-field">
-                <label>Общее (Stk):</label>
-                <input type="number" id="edit-stk" step="any">
-            </div>
-            <div class="modal-field">
-                <label>Сделка (Qty):</label>
-                <input type="number" id="edit-qty" step="any">
-            </div>
-            <div class="modal-field">
-                <label>Цена (Last):</label>
-                <input type="number" id="edit-last" step="any">
-            </div>
-            <div class="modal-actions">
-                <button class="btn-save" onclick="savePosition()">Сохр.</button>
-                <button class="btn-delete" onclick="deletePosition()">Удалить</button>
-                <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-            </div>
-        </div>
+    <!-- 3. Переключение вида -->
+    <div class="view-switch-row">
+      <a href="#" onclick="toggleView(event)">Переключить вид (Моб/Десктоп)</a>
     </div>
 
-    <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynsJ2EGFpJBa9DAouEoP4s8vovb4ref_HzSZQ9qahEmfxhbnnSEg9Kt2CPvVL2ENIL/exec';
-        
-        // Базовый портфель, если localStorage пуст
-        const defaultPortfolio = [
-            { ticker: 'LCID', stk: 10, qty: 5, last: 7.58, current: 7.04, delta: -0.54, percent: -7 },
-            { ticker: 'SOFI', stk: 28, qty: -4, last: 16.40, current: 18.38, delta: 1.98, percent: 12 },
-            { ticker: 'TSCO', stk: 20, qty: -1, last: 30.49, current: 34.56, delta: 4.07, percent: 13 },
-            { ticker: 'AAL', stk: 0, qty: -3, last: 13.27, current: 15.94, delta: 2.67, percent: 20 }
-        ];
+  </div>
 
-        let portfolio = JSON.parse(localStorage.getItem('myPortfolio')) || defaultPortfolio;
-        let editingTicker = null;
-        let pressTimer = null;
+  <script>
+    // Ключ для сохранения данных в памяти браузера
+    const STORAGE_KEY = 'portfolio_positions_v1';
 
-        function saveToLocal() {
-            localStorage.setItem('myPortfolio', JSON.stringify(portfolio));
-        }
+    // Дефолтные данные для первого запуска
+    const defaultPositions = [
+      { ticker: 'AAL', qty: -3, avg: 13.27, price: 14.93 },
+      { ticker: 'COTY', qty: -4, avg: 2.57, price: 2.76 },
+      { ticker: 'SOFI', qty: 10, avg: 7.10, price: 7.45 }
+    ];
 
-        // Рендер таблицы с комбинированной сортировкой
-function renderTable() {
-    const tbody = document.getElementById('table-body');
-    tbody.innerHTML = '';
-
-    // Вспомогательная функция: проверяет, участвует ли инструмент в приоритетной сортировке
-    function isSortingEligible(item) {
-        const hasStk = item.stk !== null && item.stk !== undefined && item.stk !== 0 && item.stk !== '0' && item.stk !== '';
-        
-        // 1. Если позиция есть в портфеле — участвует всегда
-        if (hasStk) return true; 
-        
-        // 2. Если позиции нет — участвует ТОЛЬКО если текущая цена снизилась относительно Last (delta < 0)
-        return item.delta < 0;
+    // Загрузка состояния из localStorage
+    let positions = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!positions || positions.length === 0) {
+      positions = defaultPositions;
+      saveState();
     }
 
-    portfolio.sort((a, b) => {
-        const aEligible = isSortingEligible(a);
-        const bEligible = isSortingEligible(b);
+    // Сохранение в localStorage
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
+    }
 
-        // Позиции, участвующие в сортировке, всегда выше остальных
-        if (aEligible && !bEligible) return -1;
-        if (!aEligible && bEligible) return 1;
+    // Расчет PnL (учитывает шорт и лонг на базе США, без встречного хеджирования)
+    function calculatePnL(pos) {
+      if (pos.qty === 0) return 0;
+      // Если qty < 0 (шорт), прибыль когда текущая цена ниже средней
+      // Если qty > 0 (лонг), прибыль когда текущая цена выше средней
+      return (pos.price - pos.avg) * pos.qty;
+    }
 
-        // Если оба инструмента в одной группе (оба активны или оба неактивны),
-        // сортируем их по модулю процента изменения (от наибольшего к наименьшему)
-        return Math.abs(b.percent) - Math.abs(a.percent);
-    });
+    // Форматирование чисел
+    function formatNumber(num) {
+      return num.toFixed(2);
+    }
+    
+    function formatPnL(num) {
+      const formatted = num.toFixed(2);
+      return num > 0 ? `+${formatted}` : formatted;
+    }
 
-    portfolio.forEach(item => {
-        const isUp = item.delta > 0;
-        const isDown = item.delta < 0;
-        const colorClass = isUp ? 'up' : (isDown ? 'down' : '');
-        const sign = isUp ? '+' : '';
+    function getPnLClass(num) {
+      if (num > 0) return 'profit';
+      if (num < 0) return 'loss';
+      return 'neutral';
+    }
+
+    // Отрисовка таблицы
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+
+      positions.forEach((pos, index) => {
+        const pnl = calculatePnL(pos);
+        const pnlClass = getPnLClass(pnl);
 
         const tr = document.createElement('tr');
-        
-        // Визуально чуть приглушаем строки без позиции, которые не упали
-        const hasStk = item.stk !== null && item.stk !== undefined && item.stk !== 0 && item.stk !== '0' && item.stk !== '';
-        if (!hasStk && item.delta >= 0) {
-            tr.style.opacity = '0.5';
-        }
-
-        // Обработчики долгого нажатия для мобильных
-        tr.addEventListener('touchstart', (e) => startLongPress(e, item.ticker));
-        tr.addEventListener('touchend', cancelLongPress);
-        tr.addEventListener('touchmove', cancelLongPress);
-        
-        // Для десктопа
-        tr.addEventListener('mousedown', (e) => startLongPress(e, item.ticker));
-        tr.addEventListener('mouseup', cancelLongPress);
-        tr.addEventListener('mouseleave', cancelLongPress);
-
         tr.innerHTML = `
-    <td class="name-col">${item.ticker}</td>
-    <td class="stk-col">${item.stk || ''}</td>
-    <td class="qty-col">${item.qty || ''}</td>
-    <td class="price-col">${item.last ? item.last.toFixed(2) : ''}</td>
-    <td class="price-col">${item.current ? item.current.toFixed(2) : ''}</td>
-    <td class="${colorClass}">${sign}${item.delta ? item.delta.toFixed(2) : '0.00'}</td>
-    <td class="${colorClass} percent-col">${sign}${item.percent ? item.percent.toFixed(1) : '0.0'}</td>
-`;
+          <td class="ticker-name">${pos.ticker}</td>
+          <td>${pos.qty}</td>
+          <td>${formatNumber(pos.avg)}</td>
+          <td>${formatNumber(pos.price)}</td>
+          <td class="${pnlClass}">${formatPnL(pnl)}</td>
+        `;
         tbody.appendChild(tr);
-    });
-}
+      });
+    }
 
-        // Логика долгого нажатия
-        function startLongPress(e, ticker) {
-            pressTimer = setTimeout(() => {
-                openEditModal(ticker);
-                if (navigator.vibrate) navigator.vibrate(50); // Легкая вибрация при срабатывании
-            }, 600); // 600 миллисекунд удержания
-        }
+    // Добавление новой позиции (заготовка)
+    function addPosition() {
+      const input = document.getElementById('tickerInput');
+      const ticker = input.value.trim().toUpperCase();
+      
+      if (!ticker) return;
 
-        function cancelLongPress() {
-            if (pressTimer) clearTimeout(pressTimer);
-        }
+      // Проверка, есть ли уже тикер
+      const exists = positions.find(p => p.ticker === ticker);
+      if (exists) {
+        alert('Этот тикер уже есть в списке.');
+        return;
+      }
 
-        // Управление модальным окном
-        function openEditModal(ticker) {
-            cancelLongPress();
-            editingTicker = ticker;
-            const item = portfolio.find(p => p.ticker === ticker);
-            
-            document.getElementById('modal-title').innerText = `Изменить: ${ticker}`;
-            document.getElementById('edit-stk').value = item.stk || 0;
-            document.getElementById('edit-qty').value = item.qty || 0;
-            document.getElementById('edit-last').value = item.last || 0;
-            
-            document.getElementById('edit-modal').style.display = 'flex';
-        }
+      // Добавляем болванку, здесь можно прикрутить запрос к Google Apps Script для получения реальной цены
+      positions.push({
+        ticker: ticker,
+        qty: 0,
+        avg: 0.00,
+        price: 0.00
+      });
 
-        function closeModal() {
-            document.getElementById('edit-modal').style.display = 'none';
-            editingTicker = null;
-        }
+      saveState();
+      renderTable();
+      input.value = '';
+      
+      // Вызов функции обновления через GAS (раскомментировать и настроить под себя)
+      // updatePricesFromGAS();
+    }
 
-        function savePosition() {
-            const item = portfolio.find(p => p.ticker === editingTicker);
-            if (item) {
-                item.stk = parseFloat(document.getElementById('edit-stk').value) || 0;
-                item.qty = parseFloat(document.getElementById('edit-qty').value) || 0;
-                item.last = parseFloat(document.getElementById('edit-last').value) || 0;
-                
-                // Пересчет дельты при изменении цены входа
-                item.delta = item.current > 0 ? (item.current - item.last) : 0;
-                item.percent = item.last > 0 ? (item.delta / item.last) * 100 : 0;
-            }
-            saveToLocal();
-            closeModal();
+    // --- ЛОГИКА ЭКСПОРТА И ИМПОРТА ---
+
+    function exportState() {
+      const data = JSON.stringify(positions, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `portfolio_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importState(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsedData = JSON.parse(e.target.result);
+          if (Array.isArray(parsedData)) {
+            positions = parsedData;
+            saveState();
             renderTable();
+            alert('Данные успешно загружены!');
+          } else {
+            alert('Неверный формат данных в файле.');
+          }
+        } catch (err) {
+          alert('Ошибка чтения файла. Убедитесь, что это корректный JSON.');
         }
+      };
+      
+      reader.readAsText(file);
+      event.target.value = ''; // Сброс инпута
+    }
 
-        function deletePosition() {
-            if(confirm(`Точно удалить ${editingTicker}?`)) {
-                portfolio = portfolio.filter(p => p.ticker !== editingTicker);
-                saveToLocal();
-                closeModal();
-                renderTable();
-            }
-        }
+    // --- ПЕРЕКЛЮЧЕНИЕ ВИДА ---
 
-        function addNewTicker() {
-            const input = document.getElementById('new-ticker');
-            let ticker = input.value.trim().toUpperCase();
-            
-            if (!ticker) return;
-            if (portfolio.some(p => p.ticker === ticker)) {
-                alert('Инструмент уже в списке!');
-                return;
-            }
+    function toggleView(event) {
+      event.preventDefault();
+      document.body.classList.toggle('desktop-view');
+      // Опционально: можно сохранять выбранный вид в localStorage
+      const isDesktop = document.body.classList.contains('desktop-view');
+      localStorage.setItem('view_preference', isDesktop ? 'desktop' : 'mobile');
+    }
 
-            portfolio.push({
-                ticker: ticker, stk: 0, qty: 0, last: 0, current: 0, delta: 0, percent: 0
-            });
-            
-            input.value = '';
-            saveToLocal();
-            renderTable();
-            updatePrices(); // Сразу запрашиваем цену для нового инструмента
-        }
+    // Восстановление вида при загрузке
+    if (localStorage.getItem('view_preference') === 'desktop') {
+      document.body.classList.add('desktop-view');
+    }
 
-        // Обновление котировок
-        async function updatePrices() {
-            if (portfolio.length === 0) return;
-            const tickersList = portfolio.map(p => p.ticker).join(',');
+    // Первичная отрисовка при загрузке страницы
+    renderTable();
 
-            try {
-                const response = await fetch(`${SCRIPT_URL}?tickers=${tickersList}`);
-                const result = await response.json();
-
-                if (!result.error && result.data) {
-                    result.data.forEach(apiItem => {
-                        const portItem = portfolio.find(p => p.ticker === apiItem.ticker);
-                        if (portItem) {
-                            portItem.current = apiItem.price;
-                            if (portItem.last > 0) {
-                                portItem.delta = portItem.current - portItem.last;
-                                portItem.percent = (portItem.delta / portItem.last) * 100;
-                            } else {
-                                // Если цена входа не задана, берем изменения за день из API (если нужно)
-                                portItem.percent = apiItem.change;
-                            }
-                        }
-                    });
-                    saveToLocal();
-                    renderTable();
-                }
-            } catch (e) {
-                console.error('Ошибка обновления:', e);
-            }
-        }
-
-        // Инициализация
-        renderTable();
-        updatePrices();
-        setInterval(updatePrices, 60000); // Раз в 60 сек
-    </script>
+  </script>
 </body>
 </html>
