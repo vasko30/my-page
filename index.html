@@ -212,29 +212,32 @@
         </div>
     </div>
 
-    <!-- Модальное окно -->
-    <div class="modal-overlay" id="edit-modal">
-        <div class="modal">
-            <h3 id="modal-title">Редактирование</h3>
-            <div class="modal-field">
-                <label>Общее (Stk):</label>
-                <input type="number" id="edit-stk" step="any">
-            </div>
-            <div class="modal-field">
-                <label>Сделка (Qty):</label>
-                <input type="number" id="edit-qty" step="any">
-            </div>
-            <div class="modal-field">
-                <label>Цена (Last):</label>
-                <input type="number" id="edit-last" step="any">
-            </div>
-            <div class="modal-actions">
-                <button class="btn-save" onclick="savePosition()">Сохр.</button>
-                <button class="btn-delete" onclick="deletePosition()">Удалить</button>
-                <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+    <!-- Модальное окно с кнопкой переключения знака ± -->
+<div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+        <h3 id="modal-title">Редактирование</h3>
+        <div class="modal-field">
+            <label>Общее (Stk):</label>
+            <input type="text" inputmode="decimal" id="edit-stk">
+        </div>
+        <div class="modal-field">
+            <label>Сделка (Qty):</label>
+            <div style="display: flex; gap: 6px; width: 60%;">
+                <button type="button" onclick="toggleSign('edit-qty')" style="padding: 5px 10px; background: #30363d; border: 1px solid var(--border); color: white; border-radius: 6px; font-weight: bold; font-size: 16px;">±</button>
+                <input type="text" inputmode="decimal" id="edit-qty" style="width: 100%;">
             </div>
         </div>
+        <div class="modal-field">
+            <label>Цена (Last):</label>
+            <input type="text" inputmode="decimal" id="edit-last">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-save" onclick="savePosition()">Сохр.</button>
+            <button class="btn-delete" onclick="deletePosition()">Удалить</button>
+            <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+        </div>
     </div>
+</div>
 
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynsJ2EGFpJBa9DAouEoP4s8vovb4ref_HzSZQ9qahEmfxhbnnSEg9Kt2CPvVL2ENIL/exec';
@@ -336,12 +339,32 @@
             editingTicker = null;
         }
 
+        // НОВАЯ ФУНКЦИЯ: Переключение знака + / -
+        function toggleSign(inputId) {
+            const input = document.getElementById(inputId);
+            let val = input.value.toString().trim();
+            if (!val) return;
+            
+            if (val.startsWith('-')) {
+                input.value = val.substring(1);
+            } else {
+                input.value = '-' + val;
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Чтение чисел с автозаменой запятой на точку
+        function parseInputValue(id) {
+            const val = document.getElementById(id).value.toString().replace(',', '.').trim();
+            return parseFloat(val) || 0;
+        }
+
+        // ОБНОВЛЕННОЕ Сохранение позиции
         function savePosition() {
             const item = portfolio.find(p => p.ticker === editingTicker);
             if (item) {
-                item.stk = parseFloat(document.getElementById('edit-stk').value) || 0;
-                item.qty = parseFloat(document.getElementById('edit-qty').value) || 0;
-                item.last = parseFloat(document.getElementById('edit-last').value) || 0;
+                item.stk = parseInputValue('edit-stk');
+                item.qty = parseInputValue('edit-qty');
+                item.last = parseInputValue('edit-last');
                 
                 item.delta = item.current > 0 ? (item.current - item.last) : 0;
                 item.percent = item.last > 0 ? (item.delta / item.last) * 100 : 0;
@@ -380,73 +403,67 @@
             updatePrices();
         }
 
-        // Надежный экспорт в JSON с поддержкой Web Share API и Blob URL
-async function exportData() {
-    const jsonString = JSON.stringify(portfolio, null, 2);
-    const fileName = 'portfolio_backup.json';
-    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
+        async function exportData() {
+            const jsonString = JSON.stringify(portfolio, null, 2);
+            const fileName = 'portfolio_backup.json';
+            const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
 
-    // 1. Попытка вызвать системное меню «Поделиться» (для iOS / Android)
-    const file = new File([blob], fileName, { type: 'application/json' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-            await navigator.share({
-                files: [file],
-                title: 'Резервная копия портфеля',
-                text: 'Бэкап портфеля'
-            });
-            return;
-        } catch (err) {
-            if (err.name === 'AbortError') return; // Пользователь сам отменил отправку
-        }
-    }
+            const file = new File([blob], fileName, { type: 'application/json' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Резервная копия портфеля',
+                        text: 'Бэкап портфеля'
+                    });
+                    return;
+                } catch (err) {
+                    if (err.name === 'AbortError') return;
+                }
+            }
 
-    // 2. Скачивание через Blob URL (Универсально для ПК и мобильных браузеров)
-    const url = URL.createObjectURL(blob);
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.href = url;
-    downloadAnchor.download = fileName;
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-    
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-// Безопасный импорт с очисткой от скрытых символов BOM
-function importData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            let rawText = e.target.result;
+            const url = URL.createObjectURL(blob);
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.href = url;
+            downloadAnchor.download = fileName;
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
             
-            if (typeof rawText === 'string') {
-                // Удаляем скрытый маркер UTF-8 BOM (\uFEFF) и лишние пробелы в начале/конце
-                rawText = rawText.trim().replace(/^\uFEFF/, '');
-            }
-
-            const importedPortfolio = JSON.parse(rawText);
-
-            if (Array.isArray(importedPortfolio)) {
-                portfolio = importedPortfolio;
-                saveToLocal();
-                renderTable();
-                updatePrices();
-                alert('Портфель успешно загружен!');
-            } else {
-                alert('Ошибка: Файл должен содержать массив позиций.');
-            }
-        } catch (err) {
-            alert(`Ошибка чтения файла: ${err.message}\nУбедитесь, что вы выбираете созданный .json файл.`);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
-    };
-    
-    reader.readAsText(file, 'UTF-8');
-    event.target.value = ''; // Сброс выбранного файла для возможности повторной загрузки
-}
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let rawText = e.target.result;
+                    if (typeof rawText === 'string') {
+                        rawText = rawText.trim().replace(/^\uFEFF/, '');
+                    }
+
+                    const importedPortfolio = JSON.parse(rawText);
+
+                    if (Array.isArray(importedPortfolio)) {
+                        portfolio = importedPortfolio;
+                        saveToLocal();
+                        renderTable();
+                        updatePrices();
+                        alert('Портфель успешно загружен!');
+                    } else {
+                        alert('Ошибка: Файл должен содержать массив позиций.');
+                    }
+                } catch (err) {
+                    alert(`Ошибка чтения файла: ${err.message}`);
+                }
+            };
+            
+            reader.readAsText(file, 'UTF-8');
+            event.target.value = '';
+        }
 
         async function updatePrices() {
             if (portfolio.length === 0) return;
