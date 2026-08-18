@@ -249,7 +249,20 @@
             { ticker: 'TSCO', stk: 7, qty: -3, last: 36.30, current: 36.40, delta: 0.10, percent: 0.3 }
         ];
 
-        let portfolio = JSON.parse(localStorage.getItem('myPortfolio')) || defaultPortfolio;
+       let portfolio = defaultPortfolio;
+try {
+    const savedData = localStorage.getItem('myPortfolio');
+    if (savedData) {
+        portfolio = JSON.parse(savedData);
+        // Защита: если данные повредились и это не массив, возвращаем базу
+        if (!Array.isArray(portfolio)) {
+            portfolio = defaultPortfolio;
+        }
+    }
+} catch (e) {
+    console.error("Ошибка загрузки локальных данных:", e);
+    portfolio = defaultPortfolio;
+}
         let editingTicker = null;
         let pressTimer = null;
 
