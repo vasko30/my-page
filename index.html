@@ -208,7 +208,7 @@
         <div class="backup-row">
             <button class="btn-backup" onclick="exportData()">Выгрузить JSON</button>
             <button class="btn-backup" onclick="document.getElementById('file-input').click()">Загрузить JSON</button>
-            <input type="file" id="file-input" style="display: none;" accept=".json" onchange="importData(event)">
+            <input type="file" id="file-input" style="display: none;" onchange="importData(event)">
         </div>
         <div class="toggle-view" onclick="document.body.classList.toggle('desktop-view')">Переключить вид (Моб/Десктоп)</div>
     </div>
