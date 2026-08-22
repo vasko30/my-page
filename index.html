@@ -12,7 +12,7 @@
             --text-main: #c9d1d9;
             --text-muted: #8b949e;
             --up-color: #00e5ff;
-            --down-color: #ff334b;
+            --down-color: #ff6666; /* Изменен на более светлый и мягкий красный */
         }
 
         body {
@@ -36,7 +36,6 @@
             overflow-x: auto;
         }
 
-        /* БАЗОВЫЕ СТИЛИ ДЛЯ МОБИЛЬНЫХ (iPhone SE и аналоги) */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -77,7 +76,6 @@
             font-weight: bold;
         }
 
-        /* КРУПНЫЙ ШРИФТ ДЛЯ ПЛАНШЕТОВ И ЭКРАНОВ ОТ 600px */
         @media (min-width: 600px) {
             table { font-size: 24px; }
             th { font-size: 18px; padding: 10px 4px; }
@@ -85,7 +83,6 @@
             .percent-col { font-size: 28px; }
         }
 
-        /* Нижняя панель */
         .bottom-panel {
             background-color: var(--card-bg);
             border-top: 1px solid var(--border);
@@ -145,7 +142,6 @@
             cursor: pointer;
         }
 
-        /* Модальное окно */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -176,6 +172,20 @@
         .btn-delete { background-color: var(--down-color); flex: 1; border: none; padding: 12px; border-radius: 6px; color: white; font-weight: bold; font-size: 15px; cursor: pointer;}
         .btn-cancel { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); flex: 1; padding: 12px; border-radius: 6px; font-size: 15px; cursor: pointer;}
 
+        /* Стили для планшетов: Увеличенное модальное окно */
+        @media (min-width: 600px) and (max-width: 1024px) {
+            .modal {
+                max-width: 90%; /* Ширина 90% */
+                padding: 30px;
+            }
+            .modal h3 { font-size: 24px; margin-bottom: 25px; }
+            .modal-field { margin-bottom: 20px; }
+            .modal-field label { font-size: 20px; }
+            .modal-field input { font-size: 20px; padding: 12px; }
+            .modal-field button { font-size: 20px !important; padding: 10px 15px !important; }
+            .modal-actions button { font-size: 18px; padding: 16px; }
+        }
+
         body.desktop-view { max-width: 800px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
     </style>
 </head>
@@ -194,9 +204,7 @@
                     <th>%</th>
                 </tr>
             </thead>
-            <tbody id="table-body">
-                <!-- Строки генерируются через JS -->
-            </tbody>
+            <tbody id="table-body"></tbody>
         </table>
     </div>
 
@@ -208,12 +216,12 @@
         <div class="backup-row">
             <button class="btn-backup" onclick="exportData()">Выгрузить JSON</button>
             <button class="btn-backup" onclick="document.getElementById('file-input').click()">Загрузить JSON</button>
-            <input type="file" id="file-input" style="display: none;" onchange="importData(event)">
+            <!-- Возвращен фильтр accept=".json" -->
+            <input type="file" id="file-input" style="display: none;" accept=".json" onchange="importData(event)">
         </div>
         <div class="toggle-view" onclick="document.body.classList.toggle('desktop-view')">Переключить вид (Моб/Десктоп)</div>
     </div>
 
-    <!-- Модальное окно редактирования -->
     <div class="modal-overlay" id="edit-modal">
         <div class="modal">
             <h3 id="modal-title">Редактирование</h3>
@@ -249,20 +257,18 @@
             { ticker: 'TSCO', stk: 7, qty: -3, last: 36.30, current: 36.40, delta: 0.10, percent: 0.3 }
         ];
 
-       let portfolio = defaultPortfolio;
-try {
-    const savedData = localStorage.getItem('myPortfolio');
-    if (savedData) {
-        portfolio = JSON.parse(savedData);
-        // Защита: если данные повредились и это не массив, возвращаем базу
-        if (!Array.isArray(portfolio)) {
+        let portfolio = defaultPortfolio;
+        try {
+            const savedData = localStorage.getItem('myPortfolio');
+            if (savedData) {
+                portfolio = JSON.parse(savedData);
+                if (!Array.isArray(portfolio)) portfolio = defaultPortfolio;
+            }
+        } catch (e) {
+            console.error("Ошибка загрузки локальных данных:", e);
             portfolio = defaultPortfolio;
         }
-    }
-} catch (e) {
-    console.error("Ошибка загрузки локальных данных:", e);
-    portfolio = defaultPortfolio;
-}
+
         let editingTicker = null;
         let pressTimer = null;
 
@@ -286,6 +292,15 @@ try {
 
                 if (aEligible && !bEligible) return -1;
                 if (!aEligible && bEligible) return 1;
+
+                if (aEligible && bEligible) {
+                    // Проверка на отсутствие данных или -100%
+                    const aMissing = (a.percent <= -100 || !a.current || a.current === 0);
+                    const bMissing = (b.percent <= -100 || !b.current || b.current === 0);
+                    
+                    if (aMissing && !bMissing) return 1;
+                    if (!aMissing && bMissing) return -1;
+                }
 
                 return Math.abs(b.percent) - Math.abs(a.percent);
             });
@@ -357,7 +372,6 @@ try {
             const input = document.getElementById(inputId);
             let val = input.value.toString().trim();
             if (!val) return;
-            
             if (val.startsWith('-')) {
                 input.value = val.substring(1);
             } else {
@@ -444,6 +458,7 @@ try {
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
+        // Возвращена оригинальная версия импорта
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -455,9 +470,7 @@ try {
                     if (typeof rawText === 'string') {
                         rawText = rawText.trim().replace(/^\uFEFF/, '');
                     }
-
                     const importedPortfolio = JSON.parse(rawText);
-
                     if (Array.isArray(importedPortfolio)) {
                         portfolio = importedPortfolio;
                         saveToLocal();
@@ -471,9 +484,25 @@ try {
                     alert(`Ошибка чтения файла: ${err.message}`);
                 }
             };
-            
             reader.readAsText(file, 'UTF-8');
             event.target.value = '';
+        }
+
+        function processApiData(data) {
+            data.forEach(apiItem => {
+                const portItem = portfolio.find(p => p.ticker === apiItem.ticker);
+                if (portItem) {
+                    portItem.current = apiItem.price;
+                    if (portItem.last > 0) {
+                        portItem.delta = portItem.current - portItem.last;
+                        portItem.percent = (portItem.delta / portItem.last) * 100;
+                    } else {
+                        portItem.percent = apiItem.change || 0;
+                    }
+                }
+            });
+            saveToLocal();
+            renderTable();
         }
 
         async function updatePrices() {
@@ -485,20 +514,25 @@ try {
                 const result = await response.json();
 
                 if (!result.error && result.data) {
-                    result.data.forEach(apiItem => {
-                        const portItem = portfolio.find(p => p.ticker === apiItem.ticker);
-                        if (portItem) {
-                            portItem.current = apiItem.price;
-                            if (portItem.last > 0) {
-                                portItem.delta = portItem.current - portItem.last;
-                                portItem.percent = (portItem.delta / portItem.last) * 100;
-                            } else {
-                                portItem.percent = apiItem.change || 0;
+                    processApiData(result.data);
+
+                    // Поиск позиций без данных или с дельтой -100%
+                    const missingTickers = portfolio.filter(p => isSortingEligible(p) && (p.percent <= -100 || !p.current || p.current === 0)).map(p => p.ticker);
+                    
+                    if (missingTickers.length > 0) {
+                        // Точечный повторный запрос через 7 секунд
+                        setTimeout(async () => {
+                            try {
+                                const retryResponse = await fetch(`${SCRIPT_URL}?tickers=${missingTickers.join(',')}`);
+                                const retryResult = await retryResponse.json();
+                                if (!retryResult.error && retryResult.data) {
+                                    processApiData(retryResult.data);
+                                }
+                            } catch (e) {
+                                console.error('Ошибка повторного получения цен:', e);
                             }
-                        }
-                    });
-                    saveToLocal();
-                    renderTable();
+                        }, 7000);
+                    }
                 }
             } catch (e) {
                 console.error('Ошибка обновления:', e);
