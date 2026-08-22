@@ -12,7 +12,7 @@
             --text-main: #c9d1d9;
             --text-muted: #8b949e;
             --up-color: #00e5ff;
-            --down-color: #ff6666; /* Изменен на более светлый и мягкий красный */
+            --down-color: #ff6666;
         }
 
         body {
@@ -172,10 +172,10 @@
         .btn-delete { background-color: var(--down-color); flex: 1; border: none; padding: 12px; border-radius: 6px; color: white; font-weight: bold; font-size: 15px; cursor: pointer;}
         .btn-cancel { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); flex: 1; padding: 12px; border-radius: 6px; font-size: 15px; cursor: pointer;}
 
-        /* Стили для планшетов: Увеличенное модальное окно */
+        /* Стили для планшетов */
         @media (min-width: 600px) and (max-width: 1024px) {
             .modal {
-                max-width: 90%; /* Ширина 90% */
+                max-width: 90%;
                 padding: 30px;
             }
             .modal h3 { font-size: 24px; margin-bottom: 25px; }
@@ -186,7 +186,45 @@
             .modal-actions button { font-size: 18px; padding: 16px; }
         }
 
+        /* Увеличенное модальное окно и элементы для десктопного вида (+50% высота и шрифты) */
         body.desktop-view { max-width: 800px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+        
+        body.desktop-view .modal {
+            max-width: 550px;
+            padding: 35px;
+        }
+
+        body.desktop-view .modal h3 {
+            font-size: 26px;
+            margin-bottom: 25px;
+        }
+
+        body.desktop-view .modal-field {
+            margin-bottom: 22px;
+        }
+
+        body.desktop-view .modal-field label {
+            font-size: 20px;
+        }
+
+        body.desktop-view .modal-field input {
+            font-size: 22px;
+            padding: 14px;
+        }
+
+        body.desktop-view .modal-field button {
+            font-size: 22px !important;
+            padding: 12px 18px !important;
+        }
+
+        body.desktop-view .modal-actions {
+            margin-top: 30px;
+        }
+
+        body.desktop-view .modal-actions button {
+            font-size: 20px;
+            padding: 18px;
+        }
     </style>
 </head>
 <body>
@@ -216,7 +254,6 @@
         <div class="backup-row">
             <button class="btn-backup" onclick="exportData()">Выгрузить JSON</button>
             <button class="btn-backup" onclick="document.getElementById('file-input').click()">Загрузить JSON</button>
-            <!-- Возвращен фильтр accept=".json" -->
             <input type="file" id="file-input" style="display: none;" accept=".json" onchange="importData(event)">
         </div>
         <div class="toggle-view" onclick="document.body.classList.toggle('desktop-view')">Переключить вид (Моб/Десктоп)</div>
@@ -294,7 +331,6 @@
                 if (!aEligible && bEligible) return 1;
 
                 if (aEligible && bEligible) {
-                    // Проверка на отсутствие данных или -100%
                     const aMissing = (a.percent <= -100 || !a.current || a.current === 0);
                     const bMissing = (b.percent <= -100 || !b.current || b.current === 0);
                     
@@ -458,7 +494,6 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
-        // Возвращена оригинальная версия импорта
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -516,11 +551,9 @@
                 if (!result.error && result.data) {
                     processApiData(result.data);
 
-                    // Поиск позиций без данных или с дельтой -100%
                     const missingTickers = portfolio.filter(p => isSortingEligible(p) && (p.percent <= -100 || !p.current || p.current === 0)).map(p => p.ticker);
                     
                     if (missingTickers.length > 0) {
-                        // Точечный повторный запрос через 7 секунд
                         setTimeout(async () => {
                             try {
                                 const retryResponse = await fetch(`${SCRIPT_URL}?tickers=${missingTickers.join(',')}`);
